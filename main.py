@@ -3,11 +3,10 @@ import requests
 import time
 import math
 
-population_size = 10 # Normalmente mayor, tipo 100
-chromosome_size = 64 # Tamano del cromosoma 64 = 4 estaciones * 16 sensores/estacion
+population_size = 10  # Normalmente mayor, tipo 100
+chromosome_size = 64  # Tamano del cromosoma 64 = 4 estaciones * 16 sensores/estacion
 debug_level = 0
-percentage_tournament = 0.5 # Con poblaciones de 100 suele ser un 2%-5% depende
-
+percentage_tournament = 0.5  # Con poblaciones de 100 suele ser un 2%-5% depende
 
 def step1_initialization():
     # ------------------------------------------
@@ -18,7 +17,7 @@ def step1_initialization():
         population.append([])
         chromosome_partial = ''
         for y in range(chromosome_size):
-            randInt = random.randint(0,1)
+            randInt = random.randint(0, 1)
             chromosome_partial = chromosome_partial + str(randInt)
         population[x].append(chromosome_partial)
     return population
@@ -55,20 +54,23 @@ def tournament_selection(population_fitness):
     # Step 3: This method selects best individuals in the population using tournament
     # ------------------------------------------    
     t_size = math.floor(percentage_tournament * population_size)
-    print(type(t_size))
-    if debug_level >= 0:
+
+    if debug_level >= 1:
         print("Tamaño torneo: " + str(t_size))
+
     selected = random.sample(range(population_size), t_size)
 
-    for y in selected:
-        # Select lower or best individual
-        # Append best into new population
-        print("Tournament participants: " + str(y) + " " + str(population_fitness[y]))
+    if debug_level >= 1:
+        for y in selected:
+            # Select lower or best individual
+            # Append best into new population
+            print("Tournament participants: " + str(y) + " " + str(population_fitness[y]))
+
+    return selected
+
 
 population = step1_initialization()
 population_fitness = evaluate_population(population)
-population = tournament_selection(population_fitness)
-
 
 if debug_level >= 1:
     print(population_fitness)
@@ -77,3 +79,6 @@ if debug_level >= 1:
     print("Tamaño poblacion: " + str(len(population)))
     print("Tamaño cromosoma: " + str(len(population[0][0])))
 
+
+selected = tournament_selection(population_fitness)
+print("Selected individuals in tournament: ", selected)
