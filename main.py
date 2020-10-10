@@ -3,6 +3,8 @@ import requests
 import time
 import math
 import matplotlib.pyplot as plt
+import csv
+# import functools
 
 population_size = 100  # Normalmente mayor, tipo 100
 chromosome_size = 64  # Tamano del cromosoma 64 = 4 estaciones * 16 sensores/estacion
@@ -26,6 +28,7 @@ def step1_initialization():
         population[x].append(chromosome_partial)
     return population
 
+# @functools.lru_cache(maxsize=128)
 def get_individual_fitness(individual):
     # This is for getting the fitness of an specific individual
     url = "http://memento.evannai.inf.uc3m.es/age/test?c="
@@ -48,12 +51,14 @@ def evaluate_population(population):
     # Step 2: This method evaluates a population
     # ------------------------------------------
     population_fitness = []
-    min_fitness = float('inf')
+    # List with two elements: min fitness value and corresponding individual
+    min_fitness = [float('inf'), None]
     for x in range(population_size):
         ind_fitness = get_individual_fitness(population[x])
         population_fitness.append(ind_fitness)
-        if ind_fitness < min_fitness:
-            min_fitness = ind_fitness
+        if ind_fitness < min_fitness[0]:
+            min_fitness[0] = ind_fitness
+            min_fitness[1] = population[x][0]
 
     return population_fitness, min_fitness
 
@@ -146,40 +151,60 @@ def mutation(population):
 
 ### Main() ###
 
-epochs_plt = []
+generations_plt = []
 fitness_curve = []
 
 # Population initialization
 population = step1_initialization()
 
-for i in range(0,100):
+# CSV file for storing best generation individual
+with open('best_fitness.csv', 'w') as myfile:
+    wr = csv.writer(myfile, quoting=csv.QUOTE_ALL)
+    wr.writerow(['PARAMETERS used:'])
+    wr.writerow([' - ELITISM', 'FALSE'])
+    wr.writerow([' - GENERATIONAL', 'TRUE'])
+    wr.writerow([' - Population size', population_size])
+    wr.writerow([' - Tournament (%)', percentage_tournament])
+    wr.writerow([' - Mutation rate (%)', percentage_mutation])
+    wr.writerow(['--------------'])
+    wr.writerow(['Fitness_value','Individual'])
 
-    print("--- EPOCH ", i," ---")
-    epochs_plt.append(i)    
+    for i in range(0,100):
+        print("--- Generation ", i," ---")
+        generations_plt.append(i)
 
-    # Evaluate population and get best individual
-    population_fitness, min_fitness = evaluate_population(population)
-    fitness_curve.append(min_fitness)
+        # Evaluate population and get best individual
+        population_fitness, min_fitness = evaluate_population(population)
+        fitness_curve.append(min_fitness[0])
 
-    # Plot best individual
-    if PLOTTING_REAL_TIME == 1:
-        plt.plot(epochs_plt, fitness_curve, 'b', linewidth=1.0, label='Best individual fitness')
-        if i==0:
-            plt.legend()
-            plt.xlabel('Epochs')
-            plt.ylabel('Fitness')
-        plt.pause(0.05)
+        # CSV write best individual value
+        wr.writerow(min_fitness)
+        
+        # Plot best individual
+        if PLOTTING_REAL_TIME == 1:
+            plt.plot(generations_plt, fitness_curve, 'b', linewidth=1.0, label='Best individual fitness')
+            if i==0:
+                plt.legend()
+                plt.xlabel('Generations')
+                plt.ylabel('Fitness')
+            plt.pause(0.05)
+        
+        # Stopping condition
+        if (min_fitness[0] < 5):
+            plt.savefig('fitness_value.png')
+            wr.writerow(['TOTAL GENERATIONS: ', i+1])
+            break
 
-    if debug_level >= 1:
-        print(population_fitness)
-        print("Primer individuo poblacion: " + str(population[0]))
-        print("Primer individuo poblacion: " + str(population[population_size-1]))
-        print("Tamaño poblacion: " + str(len(population)))
-        print("Tamaño cromosoma: " + str(len(population[0][0])))
+        if debug_level >= 1:
+            print(population_fitness)
+            print("Primer individuo poblacion: " + str(population[0]))
+            print("Primer individuo poblacion: " + str(population[population_size-1]))
+            print("Tamaño poblacion: " + str(len(population)))
+            print("Tamaño cromosoma: " + str(len(population[0][0])))
 
-    new_population = tournament_selection(population, population_fitness)
-    print(new_population)
-    population_sons = reproduction(new_population)
-    print(population_sons)
-    population = mutation(population_sons)
-    print(population)
+        new_population = tournament_selection(population, population_fitness)
+        # print(new_population)
+        population_sons = reproduction(new_population)
+        # print(population_sons)
+        population = mutation(population_sons)
+        # print(population)
