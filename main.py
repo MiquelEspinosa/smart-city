@@ -2,12 +2,15 @@ import random
 import requests
 import time
 import math
+import matplotlib.pyplot as plt
 
-population_size = 10  # Normalmente mayor, tipo 100
+population_size = 100  # Normalmente mayor, tipo 100
 chromosome_size = 64  # Tamano del cromosoma 64 = 4 estaciones * 16 sensores/estacion
 debug_level = 0
-percentage_tournament = 0.5  # Con poblaciones de 100 suele ser un 2%-5% depende
-percentage_mutation = 0.5
+percentage_tournament = 0.05  # Con poblaciones de 100 suele ser un 2%-5% depende
+percentage_mutation = 0.05
+
+PLOTTING_REAL_TIME = 1  # Choose to show fitness plot in real time
 
 def step1_initialization():
     # ------------------------------------------
@@ -45,10 +48,14 @@ def evaluate_population(population):
     # Step 2: This method evaluates a population
     # ------------------------------------------
     population_fitness = []
+    min_fitness = float('inf')
     for x in range(population_size):
-        population_fitness.append(get_individual_fitness(population[x]))
+        ind_fitness = get_individual_fitness(population[x])
+        population_fitness.append(ind_fitness)
+        if ind_fitness < min_fitness:
+            min_fitness = ind_fitness
 
-    return population_fitness
+    return population_fitness, min_fitness
 
 def tournament_selection(population, population_fitness):
     # ------------------------------------------
@@ -103,8 +110,8 @@ def reproduction(population):
             else:
                 son2 = son2 + madre[j]
         
-        new_population.append(son1)
-        new_population.append(son2)
+        new_population.append([son1])
+        new_population.append([son2])
 
     return new_population
 
@@ -112,30 +119,67 @@ def mutation(population):
     # ------------------------------------------
     # Step 5: Mutation of individuals given a mutation percentage
     # ------------------------------------------ 
-    new_population = []
     for i in range(population_size):
-        for j in range(chromosome_size):
-            rand = random.random()
-            if rand < percentage_mutation:
-                print("MUTATION!")
-                num = population[i][j]
-                if 0 == int(num):
-                    population[i][j] = population[i][:j] + '1' + population[i][j+2:]
-                else: 
-                    population[i][j] = population[i][:j] + '0' + population[i][j+2:]
+        rand = random.random()
+        if rand < percentage_mutation:
+            randPos = random.randint(0, chromosome_size-1)
+            
+            if debug_level > 2:
+                print("MUTATION in position ",randPos)
+                print("before ",population[i])
+            
+            num = population[i][0][randPos]
+            individual = list(population[i][0])
 
-    return new_population
+            if 0 == int(num):
+                individual[randPos] = '1'
+            else: 
+                individual[randPos] = '0'
 
+            population[i][0] = "".join(individual)
+
+            if debug_level > 2:
+                print("after  ",population[i])
+
+    return population
+
+
+### Main() ###
+
+epochs_plt = []
+fitness_curve = []
+
+# Population initialization
 population = step1_initialization()
-population_fitness = evaluate_population(population)
 
-if debug_level >= 1:
-    print(population_fitness)
-    print("Primer individuo poblacion: " + str(population[0]))
-    print("Primer individuo poblacion: " + str(population[population_size-1]))
-    print("Tamaño poblacion: " + str(len(population)))
-    print("Tamaño cromosoma: " + str(len(population[0][0])))
+for i in range(0,100):
 
-new_population = tournament_selection(population, population_fitness)
+    print("--- EPOCH ", i," ---")
+    epochs_plt.append(i)    
 
-population_sons = reproduction(new_population)
+    # Evaluate population and get best individual
+    population_fitness, min_fitness = evaluate_population(population)
+    fitness_curve.append(min_fitness)
+
+    # Plot best individual
+    if PLOTTING_REAL_TIME == 1:
+        plt.plot(epochs_plt, fitness_curve, 'b', linewidth=1.0, label='Best individual fitness')
+        if i==0:
+            plt.legend()
+            plt.xlabel('Epochs')
+            plt.ylabel('Fitness')
+        plt.pause(0.05)
+
+    if debug_level >= 1:
+        print(population_fitness)
+        print("Primer individuo poblacion: " + str(population[0]))
+        print("Primer individuo poblacion: " + str(population[population_size-1]))
+        print("Tamaño poblacion: " + str(len(population)))
+        print("Tamaño cromosoma: " + str(len(population[0][0])))
+
+    new_population = tournament_selection(population, population_fitness)
+    print(new_population)
+    population_sons = reproduction(new_population)
+    print(population_sons)
+    population = mutation(population_sons)
+    print(population)
