@@ -3,18 +3,27 @@ import requests
 import time
 import math
 import matplotlib.pyplot as plt
-import csv
-# import functools
+import sys
+
+# save results with command line input
+if len(sys.argv)>1:
+    save_results = sys.argv[1]
+else:
+    save_results = 'default'
 
 population_size = 100  # Normalmente mayor, tipo 100
 chromosome_size = 64  # Tamano del cromosoma 64 = 4 estaciones * 16 sensores/estacion
 debug_level = 0
 percentage_tournament = 0.05  # Con poblaciones de 100 suele ser un 2%-5% depende
 percentage_mutation = 0.05
+pure_elitism = False
+max_iterations = 50
 
 PLOTTING_REAL_TIME = 1  # Choose to show fitness plot in real time
+generations_plt = []    # Plotting axis
+fitness_curve = []      # Plotting curve
 
-def step1_initialization():
+def initialization():
     # ------------------------------------------
     # Step 1: Uniform random initialization of all genes/bits
     # ------------------------------------------
@@ -28,7 +37,6 @@ def step1_initialization():
         population[x].append(chromosome_partial)
     return population
 
-# @functools.lru_cache(maxsize=128)
 def get_individual_fitness(individual):
     # This is for getting the fitness of an specific individual
     url = "http://memento.evannai.inf.uc3m.es/age/test?c="
@@ -51,16 +59,15 @@ def evaluate_population(population):
     # Step 2: This method evaluates a population
     # ------------------------------------------
     population_fitness = []
-    # List with two elements: min fitness value and corresponding individual
-    min_fitness = [float('inf'), None]
+    best_individual = [float('inf'), None] # List with two elements (min fit value, best individual)
     for x in range(population_size):
         ind_fitness = get_individual_fitness(population[x])
         population_fitness.append(ind_fitness)
-        if ind_fitness < min_fitness[0]:
-            min_fitness[0] = ind_fitness
-            min_fitness[1] = population[x][0]
+        if ind_fitness < best_individual[0]:
+            best_individual[0] = ind_fitness
+            best_individual[1] = population[x][0]
 
-    return population_fitness, min_fitness
+    return population_fitness, best_individual
 
 def tournament_selection(population, population_fitness):
     # ------------------------------------------
@@ -76,7 +83,7 @@ def tournament_selection(population, population_fitness):
     for i in range(population_size):
         selected_index = random.sample(range(population_size), t_size)
         best_fitness_round = float('inf')
-        winner = -1
+        winner = -1  # Index for the winning individual
 
         for y in selected_index:
             # Select lower or best individual
@@ -148,51 +155,61 @@ def mutation(population):
 
     return population
 
+def write_header_txt(file):
+    file.write('------------------------------------ \n')
+    file.write('PARAMETERS used: \n')
+    file.write(' - PURE ELITISM: %r\n' % str(pure_elitism))
+    file.write(' - GENERATIONAL: %r\n' % str(not(pure_elitism)))
+    file.write(' - Population size: %r\n' % population_size)
+    file.write(' - Tournament percentage: %r\n' % percentage_tournament)
+    file.write(' - Mutation rate: %r\n' % percentage_mutation)
+    file.write('------------------------------------ \n\n\n')
+    file.write('------------------------------------ \n')
+    file.write('Fitness_value\t\tIndividual\n')
+    file.write('------------------------------------ \n')
 
-### Main() ###
+def initialize_plot():
+    plt.plot(generations_plt, fitness_curve, 'b', linewidth=1.0, label='Best individual fitness')
+    plt.xlabel('Generations')
+    plt.ylabel('Fitness')
+    plt.legend()
 
-generations_plt = []
-fitness_curve = []
 
-# Population initialization
-population = step1_initialization()
+def main():
+    # Population initialization
+    population = initialization()
 
-# CSV file for storing best generation individual
-with open('best_fitness.csv', 'w') as myfile:
-    wr = csv.writer(myfile, quoting=csv.QUOTE_ALL)
-    wr.writerow(['PARAMETERS used:'])
-    wr.writerow([' - ELITISM', 'FALSE'])
-    wr.writerow([' - GENERATIONAL', 'TRUE'])
-    wr.writerow([' - Population size', population_size])
-    wr.writerow([' - Tournament (%)', percentage_tournament])
-    wr.writerow([' - Mutation rate (%)', percentage_mutation])
-    wr.writerow(['--------------'])
-    wr.writerow(['Fitness_value','Individual'])
+    # TXT file for storing best generation individual
+    name = str(save_results+'.txt')
+    file = open(name, "w")
+    write_header_txt(file)
+    initialize_plot()
 
-    for i in range(0,100):
+    for i in range(0, max_iterations):
         print("--- Generation ", i," ---")
-        generations_plt.append(i)
 
         # Evaluate population and get best individual
-        population_fitness, min_fitness = evaluate_population(population)
-        fitness_curve.append(min_fitness[0])
+        population_fitness, best_individual = evaluate_population(population)
+        generations_plt.append(i)
+        fitness_curve.append(best_individual[0])
 
-        # CSV write best individual value
-        wr.writerow(min_fitness)
+        # TXT write best individual value
+        file.write('  %r\t\t\t%r\n' % (best_individual[0],best_individual[1]))
         
         # Plot best individual
         if PLOTTING_REAL_TIME == 1:
             plt.plot(generations_plt, fitness_curve, 'b', linewidth=1.0, label='Best individual fitness')
-            if i==0:
-                plt.legend()
-                plt.xlabel('Generations')
-                plt.ylabel('Fitness')
             plt.pause(0.05)
         
         # Stopping condition
-        if (min_fitness[0] < 5):
-            plt.savefig('fitness_value.png')
-            wr.writerow(['TOTAL GENERATIONS: ', i+1])
+        if (best_individual[0] == 0 or i == max_iterations-1):
+            plt.savefig(str(save_results+'.png'))
+            file.write('------------------------------------ \n\n\n')
+            file.write('------------------------------------ \n')
+            file.write('TOTAL GENERATIONS: %r\n' % (i+1))
+            file.write('------------------------------------ \n')
+            file.close()
+            print(" => Optimal solution has been found!")
             break
 
         if debug_level >= 1:
@@ -206,5 +223,21 @@ with open('best_fitness.csv', 'w') as myfile:
         # print(new_population)
         population_sons = reproduction(new_population)
         # print(population_sons)
-        population = mutation(population_sons)
+        mutated_population = mutation(population_sons)
         # print(population)
+
+        time.sleep(1)
+        if pure_elitism:
+            random_ind = random.randint(0, population_size-1)
+            mutated_population[random_ind][0] = best_individual[1]
+            # pop_fitn, _ = evaluate_population(mutated_population)
+            # max_pos = pop_fitn.index(max(pop_fitn))
+            # mutated_population[max_pos][0] = best_individual[1]
+        
+        population = mutated_population
+    
+    file.close()
+
+
+if __name__ == "__main__":
+    main()
