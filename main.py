@@ -3,22 +3,51 @@ import requests
 import time
 import math
 import matplotlib.pyplot as plt
-import sys
+import sys, getopt
 
-# save results with command line input
-if len(sys.argv)>1:
-    save_results = sys.argv[1]
-else:
-    save_results = 'default'
-
-population_size = 100  # Normalmente mayor, tipo 100
+# Parameters
 chromosome_size = 64  # Tamano del cromosoma 64 = 4 estaciones * 16 sensores/estacion
 debug_level = 0
+max_iterations = 3
+
+# ---- Default values to override ----
+save_results = 'default'
+population_size = 100  # Normalmente mayor, tipo 100
 percentage_tournament = 0.05  # Con poblaciones de 100 suele ser un 2%-5% depende
 percentage_mutation = 0.05
-pure_elitism = False
-max_iterations = 50
+pure_elitism = True
 
+# -------------------------- Arguments parsing -------------------------- #
+# Options 
+options = "f:h:p:t:m:e:"
+# Long options 
+long_options = ["file=", "help=", "population=", "tournament=", "mutation=", "elitism="]
+
+try:
+    opts, args = getopt.getopt(sys.argv[1:],options,long_options)
+except getopt.GetoptError:
+    print('main.py -f <outputfile> -h <help> -p <population_size> -t <tournament_size> -m <mutation_size> -e <pure_elitism>')
+    sys.exit(2)
+
+for opt, arg in opts:
+    if opt == '-h':
+        print('main.py -f <outputfile> -h <help> -p <population_size> -t <tournament_size> -m <mutation_size> -e <pure_elitism>')
+        sys.exit()
+    elif opt in ("-f", "--file"):
+        save_results = arg
+    elif opt in ("-p", "--population"):
+        population_size = int(arg)
+    elif opt in ("-t", "--tournament"):
+        percentage_tournament = float(arg)
+    elif opt in ("-m", "--mutation"):
+        percentage_mutation = float(arg)
+    elif opt in ("-e", "--elitism"):
+        pure_elitism = eval(arg)
+
+# ------------------------------------------------------------------------------ #
+
+
+# Plotting
 PLOTTING_REAL_TIME = 1  # Choose to show fitness plot in real time
 generations_plt = []    # Plotting axis
 fitness_curve = []      # Plotting curve
@@ -132,26 +161,26 @@ def mutation(population):
     # Step 5: Mutation of individuals given a mutation percentage
     # ------------------------------------------ 
     for i in range(population_size):
-        rand = random.random()
-        if rand < percentage_mutation:
-            randPos = random.randint(0, chromosome_size-1)
-            
-            if debug_level > 2:
-                print("MUTATION in position ",randPos)
-                print("before ",population[i])
-            
-            num = population[i][0][randPos]
-            individual = list(population[i][0])
+        for j in range(chromosome_size):
+            rand = random.random()
+            if rand < percentage_mutation:
 
-            if 0 == int(num):
-                individual[randPos] = '1'
-            else: 
-                individual[randPos] = '0'
+                if debug_level > 2:
+                    print("MUTATION in position ", j)
+                    print("before ",population[i])
+                
+                num = population[i][0][j]
+                individual = list(population[i][0])
 
-            population[i][0] = "".join(individual)
+                if 0 == int(num):
+                    individual[j] = '1'
+                else: 
+                    individual[j] = '0'
 
-            if debug_level > 2:
-                print("after  ",population[i])
+                population[i][0] = "".join(individual)
+
+                if debug_level > 2:
+                    print("after  ",population[i])
 
     return population
 
@@ -209,7 +238,10 @@ def main():
             file.write('TOTAL GENERATIONS: %r\n' % (i+1))
             file.write('------------------------------------ \n')
             file.close()
-            print(" => Optimal solution has been found!")
+            if best_individual[0] == 0:
+                print(" => Optimal solution has been found!")
+            else:
+                print(" *** Maximum number of iterations reached ***")
             break
 
         if debug_level >= 1:
