@@ -60,7 +60,7 @@ def initialization():
     for x in range(population_size):
         population.append([])
         chromosome_partial = ''
-        for y in range(chromosome_size):
+        for _ in range(chromosome_size):
             randInt = random.randint(0, 1)
             chromosome_partial = chromosome_partial + str(randInt)
         population[x].append(chromosome_partial)
@@ -109,7 +109,7 @@ def tournament_selection(population, population_fitness):
     if debug_level >= 1:
         print("Tamaño torneo: " + str(t_size))
 
-    for i in range(population_size):
+    for _ in range(population_size):
         selected_index = random.sample(range(population_size), t_size)
         best_fitness_round = float('inf')
         winner = -1  # Index for the winning individual
