@@ -10,6 +10,16 @@ chromosome_size = 64  # Tamano del cromosoma 64 = 4 estaciones * 16 sensores/est
 debug_level = 0
 max_iterations = 50
 
+# Dynamic options for tournament size
+DYNAMIC_T_SIZE = False
+MIN_T_SIZE = 0.03
+MAX_T_SIZE = 0.2
+
+# Dynamic options for mutation size
+DYNAMIC_M_SIZE = True
+MIN_M_SIZE = 0.03
+MAX_M_SIZE = 0.2
+
 # ---- Default values to override ----
 save_results = 'default'
 population_size = 100  # Normalmente mayor, tipo 100
@@ -98,11 +108,18 @@ def evaluate_population(population):
 
     return population_fitness, best_individual
 
-def tournament_selection(population, population_fitness):
+def tournament_selection(niter, population, population_fitness):
     # ------------------------------------------
     # Step 3: This method selects best individuals in the population using tournament
     # ------------------------------------------ 
+    global percentage_tournament
+    # Sigmoid function for a dynamic tournament size
+    if DYNAMIC_T_SIZE:
+        aux1 = 1+(math.e**(-0.3*(niter-(max_iterations/2))))
+        percentage_tournament = MIN_T_SIZE + (MAX_T_SIZE/aux1)
+    
     t_size = math.floor(percentage_tournament * population_size)
+    print(t_size)
 
     new_population = []
 
@@ -156,10 +173,16 @@ def reproduction(population):
 
     return new_population
 
-def mutation(population):
+def mutation(niter, population):
     # ------------------------------------------
     # Step 5: Mutation of individuals given a mutation percentage
     # ------------------------------------------ 
+    global percentage_mutation
+    # Inverse sigmoid function for a dynamic mutation size
+    if DYNAMIC_M_SIZE:
+        aux1 = 1+(math.e**(0.3*(niter-(max_iterations/2))))
+        percentage_mutation = MIN_M_SIZE + (MAX_M_SIZE/aux1)
+    print(percentage_mutation)
     for i in range(population_size):
         for j in range(chromosome_size):
             rand = random.random()
@@ -190,8 +213,14 @@ def write_header_txt(file):
     file.write(' - PURE ELITISM: %r\n' % str(pure_elitism))
     file.write(' - GENERATIONAL: %r\n' % str(not(pure_elitism)))
     file.write(' - Population size: %r\n' % population_size)
-    file.write(' - Tournament percentage: %r\n' % percentage_tournament)
-    file.write(' - Mutation rate: %r\n' % percentage_mutation)
+    if DYNAMIC_T_SIZE:
+        file.write(' - Tournament percentage: dynamic\n')
+    else:
+        file.write(' - Tournament percentage: %r\n' % percentage_tournament)
+    if DYNAMIC_M_SIZE:
+        file.write(' - Mutation rate: dynamic\n')
+    else:
+        file.write(' - Mutation rate: %r\n' % percentage_mutation)
     file.write('------------------------------------ \n\n\n')
     file.write('------------------------------------ \n')
     file.write('Fitness_value\t\tIndividual\n')
@@ -251,11 +280,11 @@ def main():
             print("Tamaño poblacion: " + str(len(population)))
             print("Tamaño cromosoma: " + str(len(population[0][0])))
 
-        new_population = tournament_selection(population, population_fitness)
+        new_population = tournament_selection(i, population, population_fitness)
         # print(new_population)
         population_sons = reproduction(new_population)
         # print(population_sons)
-        mutated_population = mutation(population_sons)
+        mutated_population = mutation(i,population_sons)
         # print(population)
 
         time.sleep(1)
