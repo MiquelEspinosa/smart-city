@@ -1,4 +1,4 @@
-# python3 main.py -f "./experiments/elitism/p20_1" -p 20 -t 0.05 -m 0.05 -e True
+python3 main.py -f "./experiments/elitism/p20_1" -p 20 -t 0.05 -m 0.05 -e True
 python3 main.py -f "./experiments/elitism/p20_2" -p 20 -t 0.05 -m 0.05 -e True
 python3 main.py -f "./experiments/elitism/p20_3" -p 20 -t 0.05 -m 0.05 -e True
 
