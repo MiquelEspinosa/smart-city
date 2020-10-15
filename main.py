@@ -8,7 +8,7 @@ import sys, getopt
 # Parameters
 chromosome_size = 64  # Tamano del cromosoma 64 = 4 estaciones * 16 sensores/estacion
 debug_level = 0
-max_iterations = 3
+max_iterations = 50
 
 # ---- Default values to override ----
 save_results = 'default'
