@@ -18,7 +18,7 @@ MAX_T_SIZE = 0.2
 # Dynamic options for mutation size
 DYNAMIC_M_SIZE = True
 MIN_M_SIZE = 0.03
-MAX_M_SIZE = 0.2
+MAX_M_SIZE = 0.1
 
 # ---- Default values to override ----
 save_results = 'default'
