@@ -11,7 +11,7 @@ debug_level = 0
 max_iterations = 50
 
 # Dynamic options for tournament size
-DYNAMIC_T_SIZE = False
+DYNAMIC_T_SIZE = True
 MIN_T_SIZE = 0.03
 MAX_T_SIZE = 0.2
 
