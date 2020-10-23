@@ -4,11 +4,17 @@ import time
 import math
 import matplotlib.pyplot as plt
 import sys, getopt
+import concurrent
+
+# Session
+my_session = requests.Session()
+url = "http://memento.evannai.inf.uc3m.es/age/madriz?c="
 
 # Parameters
-chromosome_size = 64  # Tamano del cromosoma 64 = 4 estaciones * 16 sensores/estacion
+chromosome_size = 384  # Tamano del cromosoma 64 = 4 estaciones * 16 sensores/estacion
 debug_level = 0
-max_iterations = 50
+max_iterations = 1000
+elite_size = 20 
 
 # Dynamic options for tournament size
 DYNAMIC_T_SIZE = True
@@ -22,7 +28,7 @@ MAX_M_SIZE = 0.1
 
 # ---- Default values to override ----
 save_results = 'default'
-population_size = 100  # Normalmente mayor, tipo 100
+population_size = 200  # Normalmente mayor, tipo 100
 percentage_tournament = 0.05  # Con poblaciones de 100 suele ser un 2%-5% depende
 percentage_mutation = 0.05
 pure_elitism = True
@@ -78,16 +84,15 @@ def initialization():
 
 def get_individual_fitness(individual):
     # This is for getting the fitness of an specific individual
-    url = "http://memento.evannai.inf.uc3m.es/age/test?c="
-    url = url + str(individual[0])
+    complete_url = url + str(individual[0])
     try:
         if debug_level >= 2:
             print(str(individual[0]))
-        r = requests.get(url).content
+        r = my_session.get(complete_url).content
     except:
         print("Exception when calling web service")
         time.sleep(1)
-        r = requests.get(url).content
+        return get_individual_fitness(individual)
         # Podria hacer un bucle con un número máximo de intentos aquí para
         # evitar timeouts y problemas en la llamada al servicio web
     return float(r)
@@ -106,7 +111,17 @@ def evaluate_population(population):
             best_individual[0] = ind_fitness
             best_individual[1] = population[x][0]
 
-    return population_fitness, best_individual
+    sorted_population_fitness = population_fitness
+    sorted_population_fitness.sort()
+
+    elite_fitness = sorted_population_fitness[0:elite_size]
+
+    elite_individuals = []
+    for i in range(population_size):
+        if (population_fitness[i] in elite_fitness):
+            elite_individuals.append(population[i])
+
+    return population_fitness, best_individual, elite_individuals
 
 def tournament_selection(niter, population, population_fitness):
     # ------------------------------------------
@@ -116,7 +131,7 @@ def tournament_selection(niter, population, population_fitness):
     # Sigmoid function for a dynamic tournament size
     if DYNAMIC_T_SIZE:
         aux1 = 1+(math.e**(-0.3*(niter-(max_iterations/2))))
-        percentage_tournament = MIN_T_SIZE + (MAX_T_SIZE/aux1)
+        percentage_tournament = MIN_T_SIZE + ((MAX_T_SIZE-MIN_T_SIZE)/aux1)
     
     t_size = math.floor(percentage_tournament * population_size)
     print(t_size)
@@ -126,7 +141,7 @@ def tournament_selection(niter, population, population_fitness):
     if debug_level >= 1:
         print("Tamaño torneo: " + str(t_size))
 
-    for _ in range(population_size):
+    for _ in range(population_size-elite_size):
         selected_index = random.sample(range(population_size), t_size)
         best_fitness_round = float('inf')
         winner = -1  # Index for the winning individual
@@ -181,7 +196,7 @@ def mutation(niter, population):
     # Inverse sigmoid function for a dynamic mutation size
     if DYNAMIC_M_SIZE:
         aux1 = 1+(math.e**(0.3*(niter-(max_iterations/2))))
-        percentage_mutation = MIN_M_SIZE + (MAX_M_SIZE/aux1)
+        percentage_mutation = MIN_M_SIZE + ((MAX_M_SIZE-MIN_T_SIZE)/aux1)
     print(percentage_mutation)
     for i in range(population_size):
         for j in range(chromosome_size):
@@ -247,7 +262,9 @@ def main():
         print("--- Generation ", i," ---")
 
         # Evaluate population and get best individual
-        population_fitness, best_individual = evaluate_population(population)
+        population_fitness, best_individual, elite_individuals = evaluate_population(population)
+
+        # ---------------------------------------------------------------------------------------
         generations_plt.append(i)
         fitness_curve.append(best_individual[0])
 
@@ -279,10 +296,15 @@ def main():
             print("Primer individuo poblacion: " + str(population[population_size-1]))
             print("Tamaño poblacion: " + str(len(population)))
             print("Tamaño cromosoma: " + str(len(population[0][0])))
+        # ---------------------------------------------------------------------------------------
 
-        new_population = tournament_selection(i, population, population_fitness)
+        tournament_population = tournament_selection(i, population, population_fitness)
+
+        # Join elite and tournament
+        elite_tournament = list(map(next, random.sample([iter(tournament_population)]*len(tournament_population) + [iter(elite_individuals)]*len(elite_individuals), len(tournament_population)+len(elite_individuals))))
+        
         # print(new_population)
-        population_sons = reproduction(new_population)
+        population_sons = reproduction(elite_tournament)
         # print(population_sons)
         mutated_population = mutation(i,population_sons)
         # print(population)
