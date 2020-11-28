@@ -4,9 +4,11 @@ import time
 import math
 import matplotlib.pyplot as plt
 import sys, getopt
+import concurrent.futures as futures
+import numpy as np
 
 # Parameters
-chromosome_size = 64  # Tamano del cromosoma 64 = 4 estaciones * 16 sensores/estacion
+chromosome_size = 384  # Tamano del cromosoma 64 = 4 estaciones * 16 sensores/estacion
 debug_level = 0
 max_iterations = 50
 
@@ -61,6 +63,7 @@ for opt, arg in opts:
 PLOTTING_REAL_TIME = 1  # Choose to show fitness plot in real time
 generations_plt = []    # Plotting axis
 fitness_curve = []      # Plotting curve
+MAX_RETRIES = 10
 
 def initialization():
     # ------------------------------------------
@@ -76,35 +79,46 @@ def initialization():
         population[x].append(chromosome_partial)
     return population
 
-def get_individual_fitness(individual):
+def get_individual_fitness(individual, session):
     # This is for getting the fitness of an specific individual
-    url = "http://memento.evannai.inf.uc3m.es/age/test?c="
+    url = "http://163.117.164.219/age/alfa?c="
     url = url + str(individual[0])
+    print(individual[0])
     try:
         if debug_level >= 2:
             print(str(individual[0]))
-        r = requests.get(url).content
+        r = session.get(url).content
     except:
         print("Exception when calling web service")
         time.sleep(1)
-        r = requests.get(url).content
+        r = session.get(url).content
         # Podria hacer un bucle con un número máximo de intentos aquí para
         # evitar timeouts y problemas en la llamada al servicio web
     return float(r)
 
 
-def evaluate_population(population):
+def evaluate_population(population, session):
     # ------------------------------------------
     # Step 2: This method evaluates a population
     # ------------------------------------------
     population_fitness = []
     best_individual = [float('inf'), None] # List with two elements (min fit value, best individual)
-    for x in range(population_size):
-        ind_fitness = get_individual_fitness(population[x])
-        population_fitness.append(ind_fitness)
-        if ind_fitness < best_individual[0]:
-            best_individual[0] = ind_fitness
-            best_individual[1] = population[x][0]
+
+    with futures.ThreadPoolExecutor(max_workers=population_size) as executor:
+        future = [
+            executor.submit(get_individual_fitness, ind, session)
+            for ind in population
+        ]
+    population_fitness = [f.result() for f in future]
+
+    best_individual[0] = min(population_fitness)
+    best_individual[1] = population[int(np.argmin(population_fitness))][0]
+    # for x in range(population_size):
+    #     ind_fitness = get_individual_fitness(population[x])
+    #     population_fitness.append(ind_fitness)
+    #     if ind_fitness < best_individual[0]:
+    #         best_individual[0] = ind_fitness
+    #         best_individual[1] = population[x][0]
 
     return population_fitness, best_individual
 
@@ -243,11 +257,15 @@ def main():
     write_header_txt(file)
     initialize_plot()
 
+    session = requests.Session()
+    adapter = requests.adapters.HTTPAdapter(pool_connections=population_size, pool_maxsize=population_size, max_retries=MAX_RETRIES)
+    session.mount('http://', adapter)
+
     for i in range(0, max_iterations):
         print("--- Generation ", i," ---")
 
         # Evaluate population and get best individual
-        population_fitness, best_individual = evaluate_population(population)
+        population_fitness, best_individual = evaluate_population(population, session)
         generations_plt.append(i)
         fitness_curve.append(best_individual[0])
 
@@ -287,7 +305,6 @@ def main():
         mutated_population = mutation(i,population_sons)
         # print(population)
 
-        time.sleep(1)
         if pure_elitism:
             random_ind = random.randint(0, population_size-1)
             mutated_population[random_ind][0] = best_individual[1]
