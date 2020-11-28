@@ -10,7 +10,7 @@ import numpy as np
 # Parameters
 chromosome_size = 384  # Tamano del cromosoma 64 = 4 estaciones * 16 sensores/estacion
 debug_level = 0
-max_iterations = 50
+max_iterations = 1000
 
 # Dynamic options for tournament size
 DYNAMIC_T_SIZE = True
@@ -24,10 +24,10 @@ MAX_M_SIZE = 0.1
 
 # ---- Default values to override ----
 save_results = 'default'
-population_size = 100  # Normalmente mayor, tipo 100
-percentage_tournament = 0.05  # Con poblaciones de 100 suele ser un 2%-5% depende
-percentage_mutation = 0.05
-pure_elitism = True
+population_size = 300  # Normalmente mayor, tipo 100
+percentage_tournament = 0.02  # Con poblaciones de 100 suele ser un 2%-5% depende
+percentage_mutation = 0.02
+pure_elitism = False
 
 # -------------------------- Arguments parsing -------------------------- #
 # Options 
@@ -83,7 +83,6 @@ def get_individual_fitness(individual, session):
     # This is for getting the fitness of an specific individual
     url = "http://163.117.164.219/age/alfa?c="
     url = url + str(individual[0])
-    print(individual[0])
     try:
         if debug_level >= 2:
             print(str(individual[0]))
@@ -111,16 +110,15 @@ def evaluate_population(population, session):
         ]
     population_fitness = [f.result() for f in future]
 
+    # return sorted population
+    index_sort = np.array(population_fitness).argsort()
+    population_fitness_sorted = np.array(population_fitness)[index_sort]
+    sorted_population = np.array(population)[index_sort]
+
     best_individual[0] = min(population_fitness)
     best_individual[1] = population[int(np.argmin(population_fitness))][0]
-    # for x in range(population_size):
-    #     ind_fitness = get_individual_fitness(population[x])
-    #     population_fitness.append(ind_fitness)
-    #     if ind_fitness < best_individual[0]:
-    #         best_individual[0] = ind_fitness
-    #         best_individual[1] = population[x][0]
 
-    return population_fitness, best_individual
+    return sorted_population.tolist(), population_fitness_sorted.tolist(), best_individual
 
 def tournament_selection(niter, population, population_fitness):
     # ------------------------------------------
@@ -261,11 +259,12 @@ def main():
     adapter = requests.adapters.HTTPAdapter(pool_connections=population_size, pool_maxsize=population_size, max_retries=MAX_RETRIES)
     session.mount('http://', adapter)
 
+    # Evaluate population and get best individual
+    sorted_population, population_fitness, best_individual = evaluate_population(population, session)
+    
     for i in range(0, max_iterations):
         print("--- Generation ", i," ---")
-
-        # Evaluate population and get best individual
-        population_fitness, best_individual = evaluate_population(population, session)
+        
         generations_plt.append(i)
         fitness_curve.append(best_individual[0])
 
@@ -298,21 +297,22 @@ def main():
             print("Tamaño poblacion: " + str(len(population)))
             print("Tamaño cromosoma: " + str(len(population[0][0])))
 
-        new_population = tournament_selection(i, population, population_fitness)
+        new_population = tournament_selection(i, sorted_population, population_fitness)
         # print(new_population)
         population_sons = reproduction(new_population)
         # print(population_sons)
         mutated_population = mutation(i,population_sons)
         # print(population)
 
-        if pure_elitism:
-            random_ind = random.randint(0, population_size-1)
-            mutated_population[random_ind][0] = best_individual[1]
-            # pop_fitn, _ = evaluate_population(mutated_population)
-            # max_pos = pop_fitn.index(max(pop_fitn))
-            # mutated_population[max_pos][0] = best_individual[1]
+        joined = sorted_population + mutated_population
+        all_sorted_population, all_population_fitness, best_individual = evaluate_population(joined,session)
         
-        population = mutated_population
+        sorted_population = all_sorted_population[0:population_size]
+        population_fitness = all_population_fitness[0:population_size]
+
+        if i%10==0:
+            print('Best fitness: ', best_individual[0])
+            print('Best individual: ', best_individual[1])
     
     file.close()
 
