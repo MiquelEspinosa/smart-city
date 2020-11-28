@@ -14,49 +14,49 @@ max_iterations = 1000
 
 # Dynamic options for tournament size
 DYNAMIC_T_SIZE = True
-MIN_T_SIZE = 0.03
-MAX_T_SIZE = 0.2
+MIN_T_SIZE = 0.02
+MAX_T_SIZE = 0.1
 
 # Dynamic options for mutation size
 DYNAMIC_M_SIZE = True
-MIN_M_SIZE = 0.03
+MIN_M_SIZE = 0.02
 MAX_M_SIZE = 0.1
 
 # ---- Default values to override ----
 save_results = 'default'
 population_size = 300  # Normalmente mayor, tipo 100
-percentage_tournament = 0.02  # Con poblaciones de 100 suele ser un 2%-5% depende
+percentage_tournament = 0.10  # Con poblaciones de 100 suele ser un 2%-5% depende
 percentage_mutation = 0.02
 pure_elitism = False
 
-# -------------------------- Arguments parsing -------------------------- #
-# Options 
-options = "f:h:p:t:m:e:"
-# Long options 
-long_options = ["file=", "help=", "population=", "tournament=", "mutation=", "elitism="]
+# # -------------------------- Arguments parsing -------------------------- #
+# # Options 
+# options = "f:h:p:t:m:e:"
+# # Long options 
+# long_options = ["file=", "help=", "population=", "tournament=", "mutation=", "elitism="]
 
-try:
-    opts, args = getopt.getopt(sys.argv[1:],options,long_options)
-except getopt.GetoptError:
-    print('main.py -f <outputfile> -h <help> -p <population_size> -t <tournament_size> -m <mutation_size> -e <pure_elitism>')
-    sys.exit(2)
+# try:
+#     opts, args = getopt.getopt(sys.argv[1:],options,long_options)
+# except getopt.GetoptError:
+#     print('main.py -f <outputfile> -h <help> -p <population_size> -t <tournament_size> -m <mutation_size> -e <pure_elitism>')
+#     sys.exit(2)
 
-for opt, arg in opts:
-    if opt == '-h':
-        print('main.py -f <outputfile> -h <help> -p <population_size> -t <tournament_size> -m <mutation_size> -e <pure_elitism>')
-        sys.exit()
-    elif opt in ("-f", "--file"):
-        save_results = arg
-    elif opt in ("-p", "--population"):
-        population_size = int(arg)
-    elif opt in ("-t", "--tournament"):
-        percentage_tournament = float(arg)
-    elif opt in ("-m", "--mutation"):
-        percentage_mutation = float(arg)
-    elif opt in ("-e", "--elitism"):
-        pure_elitism = eval(arg)
+# for opt, arg in opts:
+#     if opt == '-h':
+#         print('main.py -f <outputfile> -h <help> -p <population_size> -t <tournament_size> -m <mutation_size> -e <pure_elitism>')
+#         sys.exit()
+#     elif opt in ("-f", "--file"):
+#         save_results = arg
+#     elif opt in ("-p", "--population"):
+#         population_size = int(arg)
+#     elif opt in ("-t", "--tournament"):
+#         percentage_tournament = float(arg)
+#     elif opt in ("-m", "--mutation"):
+#         percentage_mutation = float(arg)
+#     elif opt in ("-e", "--elitism"):
+#         pure_elitism = eval(arg)
 
-# ------------------------------------------------------------------------------ #
+# # ------------------------------------------------------------------------------ #
 
 
 # Plotting
