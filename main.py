@@ -13,20 +13,20 @@ debug_level = 0
 max_iterations = 1000
 
 # Dynamic options for tournament size
-DYNAMIC_T_SIZE = True
+DYNAMIC_T_SIZE = False
 MIN_T_SIZE = 0.02
 MAX_T_SIZE = 0.1
 
 # Dynamic options for mutation size
-DYNAMIC_M_SIZE = True
+DYNAMIC_M_SIZE = False
 MIN_M_SIZE = 0.02
 MAX_M_SIZE = 0.1
 
 # ---- Default values to override ----
 save_results = 'default'
-population_size = 300  # Normalmente mayor, tipo 100
-percentage_tournament = 0.10  # Con poblaciones de 100 suele ser un 2%-5% depende
-percentage_mutation = 0.02
+population_size = 250  # Normalmente mayor, tipo 100
+percentage_tournament = 0.05  # Con poblaciones de 100 suele ser un 2%-5% depende
+percentage_mutation = 0.005
 pure_elitism = False
 
 # # -------------------------- Arguments parsing -------------------------- #
